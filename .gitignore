@@ -1,0 +1,44 @@
+# ====================================================================
+# Simulink & Code Generation
+# ====================================================================
+# Simulink internal cache and simulation target folders
+slprj/
+sccprj/
+
+# Embedded Coder / MATLAB Coder generated code folders
+codegen/
+
+# Simulink cache files (R2023a and newer)
+*.slxc
+
+# Simulink model backup/autosave files
+*.slx.r*
+*.mdl.r*
+
+# ====================================================================
+# MATLAB Core & Editor Files
+# ====================================================================
+# MATLAB autosave files
+*.asv
+*.m~
+*.autosave
+*.bak
+
+# Compiled MEX files (platform-dependent binaries)
+*.mex*
+
+# Derived content-obscured files
+*.p
+
+# Packaged app and toolbox files
+*.mlappinstall
+*.mltbx
+
+# Deployable archives
+*.ctf
+
+# Generated helpsearch folders
+helpsearch/
+
+# Cloud-based storage dotfile
+.MATLABDriveTag
