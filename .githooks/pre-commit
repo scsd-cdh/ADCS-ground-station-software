@@ -1,0 +1,12 @@
+#!/bin/sh
+# Enable once per clone:  git config core.hooksPath .githooks
+# Blocks commits where the MATLAB->C++ reference fixture is stale
+# (see matlab/codegen/cpp_inputs.txt). CI runs the same check.
+root=$(git rev-parse --show-toplevel)
+for py in python3 python py; do
+    if command -v "$py" >/dev/null 2>&1 && "$py" -c "import sys; sys.exit(sys.version_info[0] < 3)" 2>/dev/null; then
+        exec "$py" "$root/scripts/check_cpp_fixture.py"
+    fi
+done
+echo "pre-commit: Python 3 not found, skipping C++ fixture check (CI still enforces it)." >&2
+exit 0
