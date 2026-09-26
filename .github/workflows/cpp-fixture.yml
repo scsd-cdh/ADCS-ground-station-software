@@ -1,0 +1,17 @@
+name: C++ fixture is current
+
+# Fails when matlab/src/core (or the demo scenario) changed without regenerating
+# cpp/tests/data/demo_reference.txt. See matlab/codegen/cpp_inputs.txt.
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: python scripts/check_cpp_fixture.py
