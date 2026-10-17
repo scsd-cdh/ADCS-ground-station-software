@@ -1,6 +1,6 @@
-// C++ counterpart of matlab/scripts/run_demo.m: fixed sample TLE, "now" pinned to the
+// Demo pass prediction: fixed sample TLE, "now" pinned to the
 // TLE epoch, 24 h look-ahead, 30 s step, 10 deg mask. Prints the pass table.
-// Station and mask come from the same ADCS_* environment variables as the MATLAB side.
+// Station and mask come from the ADCS_* environment variables (see .env.example).
 #include "adcs/config.h"
 #include "adcs/window_predictor.h"
 
@@ -36,11 +36,11 @@ int main() {
     for (const auto &w : windows) {
       std::printf("%-22s %-22s %12.2f %12.3f %12.2f\n", adcs::formatUtc(w.startPosix).c_str(),
                   adcs::formatUtc(w.endPosix).c_str(), w.durationSec(), w.maxElevationDeg,
-                  0.6 * w.durationSec()); // 60 % usable-sky planning assumption, as in MATLAB
+                  0.6 * w.durationSec()); // 60 % usable-sky planning assumption
     }
     std::printf("\n%zu windows\n", windows.size());
 
-    // Same output folder as the MATLAB demo (ADCS_DATA_DIR, default <repo>/output).
+    // Output folder: ADCS_DATA_DIR, default <repo>/output.
     const auto csv = adcs::dataDir() / "cpp_demo_windows.csv";
     std::ofstream out(csv);
     out << "start_utc,end_utc,duration_sec,max_elevation_deg\n";

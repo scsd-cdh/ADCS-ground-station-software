@@ -1,6 +1,5 @@
-// Hand-written layer over the MATLAB-Coder-generated adcs::AdcsCore.
-// Mirrors matlab/src/lib/SGP4Propagator.m and CommunicationWindowCalculator.m
-// (propagate -> TEME->ECEF -> elevation-mask windows -> fine peak refinement).
+// Hand-written layer over adcs::AdcsCore (cpp/adcs_core):
+// TLE parsing and pass prediction (propagate -> TEME->ECEF -> elevation-mask windows -> fine peak refinement).
 #pragma once
 
 #include "AdcsCore.h"

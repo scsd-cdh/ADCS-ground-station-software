@@ -1,5 +1,5 @@
-// Checks the generated temeToEcef / computeWindowsCore (through adcs/window_predictor.h)
-// against numbers exported from MATLAB by matlab/tests/export_cpp_fixture.m.
+// Checks temeToEcef / computeWindowsCore (through adcs/window_predictor.h)
+// against the reference results in data/demo_reference.txt.
 #include "adcs/window_predictor.h"
 
 #include <cmath>

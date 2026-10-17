@@ -1,4 +1,4 @@
-// C++ counterpart of matlab/tests/test_sgp4.m: checks the generated adcs::AdcsCore
+// Checks adcs::AdcsCore
 // against the published Vallado SGP4-VER vectors (satellite 00005, TEME, km, km/s).
 #include "AdcsCore.h"
 #include "tleToSatrec_types.h"

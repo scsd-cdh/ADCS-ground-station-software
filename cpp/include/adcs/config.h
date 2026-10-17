@@ -1,4 +1,4 @@
-// Runtime configuration shared with the MATLAB side (matlab/src/lib/loadConfig.m).
+// Runtime configuration (ADCS_* environment variables, see .env.example).
 #pragma once
 
 #include <filesystem>
