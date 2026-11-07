@@ -1,3 +1,4 @@
+// Copyright (c) 2026, Space Concordia Contributors
 #include "adcs/config.h"
 
 #include <cstdlib>
@@ -13,4 +14,4 @@ std::filesystem::path dataDir() {
   return dir;
 }
 
-} // namespace adcs
+}  // namespace adcs

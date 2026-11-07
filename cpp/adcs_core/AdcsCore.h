@@ -40,10 +40,6 @@ public:
                   const ::coder::array<double, 1U> &jdUt1,
                   ::coder::array<double, 2U> &rEcef,
                   ::coder::array<double, 2U> &vEcef);
-  void computeWindowsCore(const ::coder::array<double, 1U> &tSec,
-                          const ::coder::array<double, 2U> &posEcef,
-                          double gsLatDeg, double gsLonDeg, double gsAltM,
-                          double minElevDeg, ::coder::array<double, 2U> &win);
 };
 
 } // namespace adcs

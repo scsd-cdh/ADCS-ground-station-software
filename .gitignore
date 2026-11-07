@@ -3,7 +3,7 @@
 .env.*
 !.env.example
 
-# Runtime output (TLE caches, telemetry logs, demo results) - ADCS_DATA_DIR default
+# Runtime output (TLE cache, CelesTrak pull log) - ADCS_DATA_DIR default
 output/
 
 # C++ build output

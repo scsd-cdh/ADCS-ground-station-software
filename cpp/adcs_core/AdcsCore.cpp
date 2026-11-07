@@ -10,19 +10,13 @@
 
 // Include Files
 #include "AdcsCore.h"
-#include "asind.h"
 #include "atan2.h"
 #include "cat.h"
 #include "cos.h"
-#include "diff.h"
-#include "find.h"
-#include "minOrMax.h"
 #include "rem.h"
 #include "rt_nonfinite.h"
 #include "sin.h"
-#include "sqrt.h"
 #include "str2double.h"
-#include "sum.h"
 #include "tleToSatrec_data.h"
 #include "tleToSatrec_types.h"
 #include "coder_array.h"
@@ -34,86 +28,12 @@
 
 // Function Declarations
 namespace adcs {
-static void binary_expand_op_3(::coder::array<double, 1U> &in1,
-                               const ::coder::array<double, 2U> &in2,
-                               double in3, double in4, double in5, double in6,
-                               const ::coder::array<double, 1U> &in7);
-
 static double rt_powd_snf(double u0, double u1);
 
 } // namespace adcs
 
 // Function Definitions
-//
-// Arguments    : ::coder::array<double, 1U> &in1
-//                const ::coder::array<double, 2U> &in2
-//                double in3
-//                double in4
-//                double in5
-//                double in6
-//                const ::coder::array<double, 1U> &in7
-// Return Type  : void
-//
 namespace adcs {
-static void binary_expand_op_3(::coder::array<double, 1U> &in1,
-                               const ::coder::array<double, 2U> &in2,
-                               double in3, double in4, double in5, double in6,
-                               const ::coder::array<double, 1U> &in7)
-{
-  ::coder::array<double, 1U> b_in1;
-  double b_in3[3];
-  int loop_ub;
-  int scalarLB;
-  int vectorUB;
-  b_in3[0] = in3 * in4;
-  b_in3[1] = in3 * in5;
-  b_in3[2] = in6;
-  loop_ub = in2.size(0);
-  in1.set_size(loop_ub);
-  for (int i{0}; i < loop_ub; i++) {
-    in1[i] = 0.0;
-  }
-  scalarLB = (loop_ub / 2) << 1;
-  vectorUB = scalarLB - 2;
-  for (int i{0}; i < 3; i++) {
-    double d;
-    d = b_in3[i];
-    for (int i1{0}; i1 <= vectorUB; i1 += 2) {
-      __m128d r;
-      __m128d r1;
-      r = _mm_loadu_pd(&in2[i1 + in2.size(0) * i]);
-      r1 = _mm_loadu_pd(&in1[i1]);
-      _mm_storeu_pd(&in1[i1], _mm_add_pd(r1, _mm_mul_pd(r, _mm_set1_pd(d))));
-    }
-    for (int i1{scalarLB}; i1 < loop_ub; i1++) {
-      in1[i1] = in1[i1] + in2[i1 + in2.size(0) * i] * d;
-    }
-  }
-  if (in7.size(0) == 1) {
-    loop_ub = in1.size(0);
-  } else {
-    loop_ub = in7.size(0);
-  }
-  b_in1.set_size(loop_ub);
-  scalarLB = (in1.size(0) != 1);
-  vectorUB = (in7.size(0) != 1);
-  if (static_cast<int>(loop_ub < 1600)) {
-    for (int i2{0}; i2 < loop_ub; i2++) {
-      b_in1[i2] = in1[i2 * scalarLB] / in7[i2 * vectorUB];
-    }
-  } else {
-#pragma omp parallel for num_threads(omp_get_max_threads())
-
-    for (int i2 = 0; i2 < loop_ub; i2++) {
-      b_in1[i2] = in1[i2 * scalarLB] / in7[i2 * vectorUB];
-    }
-  }
-  in1.set_size(loop_ub);
-  for (int i{0}; i < loop_ub; i++) {
-    in1[i] = b_in1[i];
-  }
-}
-
 //
 // Arguments    : double u0
 //                double u1
@@ -182,278 +102,12 @@ AdcsCore::~AdcsCore()
 }
 
 //
-// COMPUTEWINDOWSCORE  Pass windows above an elevation mask (codegen-friendly).
-//    tSec    Nx1  sample times [s] (any epoch, increasing)
-//    posEcef Nx3  spacecraft ECEF position [m]
-//    win     Mx5  [startSec endSec maxElevDeg startTruncated endTruncated]
-//                maxElevDeg is parabola-refined between samples.
-//                AOS/LOS are linearly interpolated between samples.
-//                "Truncated" = window touches the first/last sample, so the
-//                true edge lies outside the propagated horizon.
-//
-// Arguments    : const ::coder::array<double, 1U> &tSec
-//                const ::coder::array<double, 2U> &posEcef
-//                double gsLatDeg
-//                double gsLonDeg
-//                double gsAltM
-//                double minElevDeg
-//                ::coder::array<double, 2U> &win
-// Return Type  : void
-//
-void AdcsCore::computeWindowsCore(const ::coder::array<double, 1U> &tSec,
-                                  const ::coder::array<double, 2U> &posEcef,
-                                  double gsLatDeg, double gsLonDeg,
-                                  double gsAltM, double minElevDeg,
-                                  ::coder::array<double, 2U> &win)
-{
-  __m128d r1;
-  ::coder::array<double, 2U> d;
-  ::coder::array<double, 2U> r;
-  ::coder::array<double, 1U> b_d;
-  ::coder::array<double, 1U> b_elev;
-  ::coder::array<double, 1U> elev;
-  ::coder::array<int, 1U> r2;
-  ::coder::array<int, 1U> starts;
-  ::coder::array<boolean_T, 1U> d_d;
-  double b_N[3];
-  double N;
-  double c_d;
-  double gs_tmp;
-  double lat;
-  double lon;
-  double pk;
-  double tE;
-  double tS;
-  double varargin_1;
-  int b_loop_ub;
-  int eTrunc;
-  int i1;
-  int loop_ub;
-  int n;
-  int u0;
-  int u1;
-  int vectorUB;
-  n = tSec.size(0);
-  //  Elevation of each ECEF point as seen from a WGS84 geodetic station.
-  lat = gsLatDeg * 3.1415926535897931 / 180.0;
-  lon = gsLonDeg * 3.1415926535897931 / 180.0;
-  tS = std::sin(lat);
-  N = 6.378137E+6 / std::sqrt(1.0 - 0.0066943799901413165 * (tS * tS));
-  pk = std::cos(lat);
-  gs_tmp = std::cos(lon);
-  tE = std::sin(lon);
-  lat = (N + gsAltM) * pk;
-  b_N[0] = lat * gs_tmp;
-  b_N[1] = lat * tE;
-  b_N[2] = (N * 0.99330562000985867 + gsAltM) * tS;
-  loop_ub = posEcef.size(0);
-  d.set_size(posEcef.size(0), 3);
-  eTrunc = (posEcef.size(0) / 2) << 1;
-  vectorUB = eTrunc - 2;
-  u0 = (eTrunc - 1) / 2;
-  u1 = posEcef.size(0) - eTrunc;
-  if (u0 >= u1) {
-    u1 = u0;
-  }
-  if (static_cast<int>(3 * u1 < 1600)) {
-    for (int i{0}; i < 3; i++) {
-      for (i1 = 0; i1 <= vectorUB; i1 += 2) {
-        _mm_storeu_pd(
-            &d[i1 + d.size(0) * i],
-            _mm_sub_pd(_mm_loadu_pd(&posEcef[i1 + posEcef.size(0) * i]),
-                       _mm_set1_pd(b_N[i])));
-      }
-      for (i1 = eTrunc; i1 < loop_ub; i1++) {
-        d[i1 + d.size(0) * i] = posEcef[i1 + posEcef.size(0) * i] - b_N[i];
-      }
-    }
-  } else {
-#pragma omp parallel for num_threads(omp_get_max_threads()) private(r1, i1)
-
-    for (int i = 0; i < 3; i++) {
-      for (i1 = 0; i1 <= vectorUB; i1 += 2) {
-        r1 = _mm_loadu_pd(&posEcef[i1 + posEcef.size(0) * i]);
-        r1 = _mm_sub_pd(r1, _mm_set1_pd(b_N[i]));
-        _mm_storeu_pd(&d[i1 + d.size(0) * i], r1);
-      }
-      for (i1 = eTrunc; i1 < loop_ub; i1++) {
-        d[i1 + d.size(0) * i] = posEcef[i1 + posEcef.size(0) * i] - b_N[i];
-      }
-    }
-  }
-  u1 = d.size(0);
-  r.set_size(d.size(0), 3);
-  u0 = d.size(0) * 3;
-  loop_ub = (u0 < 1600);
-  if (loop_ub) {
-    for (int i2{0}; i2 < u0; i2++) {
-      lon = d[i2];
-      r[i2] = lon * lon;
-    }
-  } else {
-#pragma omp parallel for num_threads(omp_get_max_threads()) private(varargin_1)
-
-    for (int i2 = 0; i2 < u0; i2++) {
-      varargin_1 = d[i2];
-      r[i2] = varargin_1 * varargin_1;
-    }
-  }
-  coder::sum(r, b_d);
-  coder::b_sqrt(b_d);
-  if (d.size(0) == b_d.size(0)) {
-    b_N[0] = pk * gs_tmp;
-    b_N[1] = pk * tE;
-    b_N[2] = tS;
-    elev.set_size(u1);
-    if (loop_ub) {
-      for (int i3{0}; i3 < u1; i3++) {
-        elev[i3] = ((d[i3] * b_N[0] + d[i3 + d.size(0)] * b_N[1]) +
-                    d[i3 + d.size(0) * 2] * tS) /
-                   b_d[i3];
-      }
-    } else {
-#pragma omp parallel for num_threads(omp_get_max_threads()) private(c_d)
-
-      for (int i3 = 0; i3 < u1; i3++) {
-        c_d = (d[i3] * b_N[0] + d[i3 + d.size(0)] * b_N[1]) +
-              d[i3 + d.size(0) * 2] * b_N[2];
-        elev[i3] = c_d / b_d[i3];
-      }
-    }
-  } else {
-    binary_expand_op_3(elev, d, pk, gs_tmp, tE, tS, b_d);
-  }
-  coder::b_asind(elev);
-  b_elev.set_size(elev.size(0) + 2);
-  b_elev[0] = 0.0;
-  u0 = elev.size(0);
-  if (static_cast<int>(elev.size(0) < 1600)) {
-    for (int i4{0}; i4 < u0; i4++) {
-      b_elev[i4 + 1] = (elev[i4] >= minElevDeg);
-    }
-  } else {
-#pragma omp parallel for num_threads(omp_get_max_threads())
-
-    for (int i4 = 0; i4 < u0; i4++) {
-      b_elev[i4 + 1] = (elev[i4] >= minElevDeg);
-    }
-  }
-  b_elev[elev.size(0) + 1] = 0.0;
-  coder::diff(b_elev, b_d);
-  u0 = b_d.size(0);
-  d_d.set_size(b_d.size(0));
-  loop_ub = (b_d.size(0) < 1600);
-  if (loop_ub) {
-    for (int i5{0}; i5 < u0; i5++) {
-      d_d[i5] = (b_d[i5] == 1.0);
-    }
-  } else {
-#pragma omp parallel for num_threads(omp_get_max_threads())
-
-    for (int i5 = 0; i5 < u0; i5++) {
-      d_d[i5] = (b_d[i5] == 1.0);
-    }
-  }
-  coder::eml_find(d_d, r2);
-  b_loop_ub = r2.size(0);
-  starts.set_size(r2.size(0));
-  if (b_loop_ub - 1 >= 0) {
-    std::copy(&r2[0], &r2[b_loop_ub], &starts[0]);
-  }
-  d_d.set_size(u0);
-  if (loop_ub) {
-    for (int i6{0}; i6 < u0; i6++) {
-      d_d[i6] = (b_d[i6] == -1.0);
-    }
-  } else {
-#pragma omp parallel for num_threads(omp_get_max_threads())
-
-    for (int i6 = 0; i6 < u0; i6++) {
-      d_d[i6] = (b_d[i6] == -1.0);
-    }
-  }
-  coder::eml_find(d_d, r2);
-  u0 = r2.size(0);
-  b_d.set_size(r2.size(0));
-  if (static_cast<int>(r2.size(0) < 1600)) {
-    for (int i7{0}; i7 < u0; i7++) {
-      b_d[i7] = static_cast<double>(r2[i7]) - 1.0;
-    }
-  } else {
-#pragma omp parallel for num_threads(omp_get_max_threads())
-
-    for (int i7 = 0; i7 < u0; i7++) {
-      b_d[i7] = static_cast<double>(r2[i7]) - 1.0;
-    }
-  }
-  win.set_size(b_loop_ub, 5);
-  for (int k{0}; k < b_loop_ub; k++) {
-    int sTrunc;
-    if (starts[k] > 1) {
-      lat = elev[starts[k] - 2];
-      lon = tSec[starts[k] - 2];
-      tS = lon + (minElevDeg - lat) / (elev[starts[k] - 1] - lat) *
-                     (tSec[starts[k] - 1] - lon);
-      sTrunc = 0;
-    } else {
-      tS = tSec[0];
-      sTrunc = 1;
-    }
-    if (b_d[k] < n) {
-      u0 = static_cast<int>(b_d[k]) - 1;
-      lat = elev[u0];
-      loop_ub = static_cast<int>(b_d[k] + 1.0) - 1;
-      lon = tSec[u0];
-      tE = lon +
-           (lat - minElevDeg) / (lat - elev[loop_ub]) * (tSec[loop_ub] - lon);
-      eTrunc = 0;
-    } else {
-      tE = tSec[static_cast<int>(b_d[k]) - 1];
-      eTrunc = 1;
-    }
-    //  peak elevation: highest sample, refined by a parabola through its
-    //  neighbours
-    vectorUB = starts[k];
-    if (vectorUB > b_d[k]) {
-      u1 = 0;
-      u0 = 0;
-    } else {
-      u1 = starts[k] - 1;
-      u0 = static_cast<int>(b_d[k]);
-    }
-    u0 -= u1;
-    b_elev.set_size(u0);
-    for (int i8{0}; i8 < u0; i8++) {
-      b_elev[i8] = elev[u1 + i8];
-    }
-    pk = coder::internal::maximum(b_elev, loop_ub);
-    lat = (static_cast<double>(loop_ub) + static_cast<double>(vectorUB)) - 1.0;
-    if ((lat > 1.0) &&
-        (static_cast<unsigned int>(lat) < static_cast<unsigned int>(n))) {
-      gs_tmp = elev[static_cast<int>(lat) - 1];
-      lon = elev[static_cast<int>(lat) - 2];
-      lat = elev[static_cast<int>(lat)];
-      N = (lon - 2.0 * gs_tmp) + lat;
-      if (N < 0.0) {
-        lat = lon - lat;
-        pk = std::fmax(pk, gs_tmp - 0.25 * lat * (0.5 * lat / N));
-      }
-    }
-    win[k] = tS;
-    win[k + win.size(0)] = tE;
-    win[k + win.size(0) * 2] = pk;
-    win[k + win.size(0) * 3] = sTrunc;
-    win[k + win.size(0) * 4] = eTrunc;
-  }
-}
-
-//
 // SGP4INIT  Initialise near-Earth SGP4 (period < 225 min) from mean elements.
 //    Inputs (TLE mean elements): ecco [-], inclo/nodeo/argpo/mo [rad],
 //    noKozai [rad/min] (Kozai mean motion as in the TLE), bstar [1/Earth
 //    radii]. satrec.error: 0 ok, 1 bad elements, 7 deep-space orbit (not
 //    implemented). Port of Vallado's reference implementation (opsmode 'i'),
-//    validated against the published SGP4-VER test vectors (see test_sgp4.m).
+//    validated against the published SGP4-VER test vectors (see tests/test_sgp4.cpp).
 //
 // Arguments    : double ecco
 //                double inclo
