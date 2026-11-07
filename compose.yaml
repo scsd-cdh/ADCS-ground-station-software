@@ -1,0 +1,18 @@
+# Development container: docker compose run --rm dev
+# Inside it:
+#   cmake -S cpp -B /build -G Ninja && cmake --build /build && ctest --test-dir /build
+#   cpplint --recursive cpp
+services:
+  dev:
+    build:
+      context: .
+      target: dev
+    volumes:
+      - .:/work
+      - build:/build  # Linux build tree, kept apart from a host cpp/build
+    env_file:
+      - path: .env
+        required: false
+
+volumes:
+  build:
